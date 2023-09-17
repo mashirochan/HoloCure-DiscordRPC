@@ -34,8 +34,7 @@ static CallbackAttributes_t* g_pCodeCallbackAttributes = nullptr;
 static uint32_t FrameNumber = 0;
 static const char* playStr = "Play Modded!";
 RefString tempVar = RefString(playStr, strlen(playStr), false);
-RefString* moddedVerRef = nullptr;
-static const char* moddedVerStr;
+static bool versionTextChanged = false;
 
 static std::unordered_map<int, const char*> codeIndexToName;
 static std::unordered_map<int, std::function<void(YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags)>> codeFuncTable;
@@ -73,22 +72,13 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 		codeIndexToName[Code->i_CodeIndex] = Code->i_pName;
 		if (_strcmpi(Code->i_pName, "gml_Object_obj_TitleScreen_Create_0") == 0) {
 			auto TitleScreen_Create_0 = [](YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
-				YYRValue yyrv_version;
-				CallBuiltin(yyrv_version, "variable_global_get", Self, Other, { "version" });
-
-				const char* moddedStr = " (Modded)";
-				char* tempStr = new char[strlen(yyrv_version) + strlen(moddedStr) + 1];
-				strcpy(tempStr, yyrv_version);
-				strcat(tempStr, moddedStr);
-				moddedVerStr = tempStr;
-				if (moddedVerRef != nullptr) {
-					delete moddedVerRef;
+				if (versionTextChanged == false) {
+					YYRValue yyrv_version;
+					CallBuiltin(yyrv_version, "variable_global_get", Self, Other, { "version" });
+					std::string moddedVerStr = yyrv_version.operator std::string() + " (Modded)";
+					CallBuiltin(yyrv_version, "variable_global_set", Self, Other, { "version", moddedVerStr.c_str() });
+					versionTextChanged = true;
 				}
-				moddedVerRef = new RefString(moddedVerStr, strlen(moddedVerStr), false);
-
-				CallBuiltin(yyrv_version, "variable_global_set", Self, Other, { "version", moddedVerRef->m_Thing });
-
-				pCodeEvent->Call(Self, Other, Code, Res, Flags);
 
 				discord::Activity activity{};
 				activity.SetName("HoloCure - Save the Fans!");
@@ -101,7 +91,8 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 				activity.GetAssets().SetSmallText("UUUUUUU");
 				core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {});
 
-				};
+				pCodeEvent->Call(Self, Other, Code, Res, Flags);
+			};
 			TitleScreen_Create_0(pCodeEvent, Self, Other, Code, Res, Flags);
 			codeFuncTable[Code->i_CodeIndex] = TitleScreen_Create_0;
 		} else if (_strcmpi(Code->i_pName, "gml_Object_obj_TextController_Create_0") == 0) {
