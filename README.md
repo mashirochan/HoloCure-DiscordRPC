@@ -7,7 +7,7 @@ A HoloCure mod intended to add Discord Rich Presence functionality to HoloCure, 
 
 Regarding the YYToolkit Launcher:
 
-It's a launcher used to inject .dlls, so most anti-virus will be quick to flag it with Trojan-like behavior because of a similar use-case. The launcher is entirely open soruce (as is YYToolkit itself, the backbone of the project), so you're more than welcome to build everything yourself from the source: https://github.com/Archie-osu/YYToolkit/
+It's a launcher used to inject .dlls, so most anti-virus will be quick to flag it with Trojan-like behavior because of a similar use-case. The launcher is entirely open source (as is YYToolkit itself, the backbone of the project), so you're more than welcome to build everything yourself from the source: https://github.com/Archie-osu/YYToolkit/
 
 - Download the two .dll files from the latest release of my [Discord RPC mod](https://github.com/mashirochan/HoloCure-DiscordRPC/releases/latest)
 - Download `Launcher.exe` from the [latest release of YYToolkit](https://github.com/Archie-osu/YYToolkit/releases/latest)
