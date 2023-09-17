@@ -29,4 +29,4 @@ It's a launcher used to inject .dlls, so most anti-virus will be quick to flag i
 
 Not much testing at all has gone into this, so I'm really sorry if this doesn't work. Use at your own risk!
 
-Feel free to ask in the [Reddit thread](https://www.reddit.com/r/holocure/comments/16ktvh4/discord_rich_presence_mod_release/) about any issues you have!
+Feel free to ask in the [Reddit thread](https://www.reddit.com/r/holocure/comments/16l5wru/discord_rich_presence_mod_release/) about any issues you have, or also join the [HoloCure Discord server](https://discord.gg/holocure) and look for the HoloCure Code Discussion thread in #holocure-general!
