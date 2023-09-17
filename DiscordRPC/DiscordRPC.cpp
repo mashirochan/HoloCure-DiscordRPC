@@ -6,6 +6,10 @@
 #include <vector>       // Include the STL vector.
 #include <unordered_map>
 #include <functional>
+#include <ctime>
+#include <random>
+#include <map>
+#include <algorithm>
 
 static struct Version {
 	int major = VERSION_MAJOR;
@@ -23,8 +27,49 @@ constexpr auto APPLICATION_ID = 1151654619244666951;
 discord::Core* core{};
 discord::Result result;
 void LogProblemsFunction(discord::LogLevel level, std::string message) {
-	PrintError(__FILE__, __LINE__, "Discord:%d - %s", level, message.c_str());
+	PrintError(__FILE__, __LINE__, "Discord: %d - %s", level, message.c_str());
 }
+std::random_device rd;
+std::mt19937 gen(rd());
+std::string GetRandomTitleIcon() {
+	std::uniform_int_distribution<int> distribution(1, 6);
+	int randomValue = distribution(gen);
+	std::string randomStr = "titlescreen_icon_" + std::to_string(randomValue);
+	return randomStr;
+}
+std::string GetFormattedCharName(std::string charName) {
+	// Special Cases
+	if (charName == "AZKi") return "AZKi";
+	if (charName == "IRYS") return "IRyS";
+	if (charName == "NINOMAE INANIS") return "Ninomae Ina'nis";
+
+	bool newWord = true;
+
+	for (char& c : charName) {
+		if (newWord && std::isalpha(c)) {
+			c = std::toupper(c);
+			newWord = false;
+		} else {
+			c = std::tolower(c);
+		}
+
+		if (std::isspace(c)) {
+			newWord = true;
+		}
+	}
+
+	return charName;
+}
+std::string convertToIconName(const std::string& input) {
+	std::string result = input;
+	result.erase(std::remove(result.begin(), result.end(), '('), result.end());
+	result.erase(std::remove(result.begin(), result.end(), ')'), result.end());
+	std::replace(result.begin(), result.end(), ' ', '_');
+	std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+	result += "_icon";
+	return result;
+}
+std::map<int, std::pair<std::string, std::string>> stageMap;
 
 // CallBuiltIn is way too slow to use per frame. Need to investigate if there's a better way to call in built functions.
 
@@ -82,13 +127,12 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 
 				discord::Activity activity{};
 				activity.SetName("HoloCure - Save the Fans!");
-				activity.SetState("Playing Fauna");
-				activity.SetDetails("Stage 3 (Hard)");
-				activity.GetTimestamps().SetStart(1694842092);
-				activity.GetAssets().SetLargeImage("stage_3_hard_icon");
-				activity.GetAssets().SetLargeText("Halloween Castle (Myth)");
-				activity.GetAssets().SetSmallImage("ceres_fauna_icon");
-				activity.GetAssets().SetSmallText("UUUUUUU");
+				activity.SetState("On Title Screen");
+				std::time_t currentTime;
+				std::time(&currentTime);
+				activity.GetTimestamps().SetStart((int)currentTime);
+				activity.GetAssets().SetLargeImage(GetRandomTitleIcon().c_str());
+				activity.GetAssets().SetLargeText("On Title Screen");
 				core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {});
 
 				pCodeEvent->Call(Self, Other, Code, Res, Flags);
@@ -97,22 +141,66 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 			codeFuncTable[Code->i_CodeIndex] = TitleScreen_Create_0;
 		} else if (_strcmpi(Code->i_pName, "gml_Object_obj_TextController_Create_0") == 0) {
 			auto TextController_Create_0 = [](YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
-				YYRValue Result;
+				YYRValue yyrv_textContainer;
 				pCodeEvent->Call(Self, Other, Code, Res, Flags);
-				CallBuiltin(Result, "variable_global_get", Self, Other, { "TextContainer" });
-				YYRValue tempResult;
-				CallBuiltin(tempResult, "struct_get", Self, Other, { Result, "titleButtons" });
-				YYRValue tempResultOne;
-				CallBuiltin(tempResultOne, "struct_get", Self, Other, { tempResult, "eng" });
+				CallBuiltin(yyrv_textContainer, "variable_global_get", Self, Other, { "TextContainer" });
+				YYRValue yyrv_titleButtons;
+				CallBuiltin(yyrv_titleButtons, "struct_get", Self, Other, { yyrv_textContainer, "titleButtons" });
+				YYRValue yyrv_eng;
+				CallBuiltin(yyrv_eng, "struct_get", Self, Other, { yyrv_titleButtons, "eng" });
 
-				tempResultOne.RefArray->m_Array[0].String = &tempVar;
-				};
+				yyrv_eng.RefArray->m_Array[0].String = &tempVar;
+			};
 			TextController_Create_0(pCodeEvent, Self, Other, Code, Res, Flags);
 			codeFuncTable[Code->i_CodeIndex] = TextController_Create_0;
+		} else if (_strcmpi(Code->i_pName, "gml_Object_obj_PlayerManager_Create_0") == 0) {
+			auto PlayerManager_Create_0 = [](YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
+				pCodeEvent->Call(Self, Other, Code, Res, Flags);
+				YYRValue yyrv_charName;
+				CallBuiltin(yyrv_charName, "variable_instance_get", Self, Other, { (long long)Self->i_id, "charName" });
+				std::string charName = yyrv_charName.String->Get();
+				std::string stateStr = "Playing " + GetFormattedCharName(charName);
+				std::string charIconStr = convertToIconName(charName);
+
+				YYRValue yyrv_bgmPlay;
+				CallBuiltin(yyrv_bgmPlay, "variable_global_get", Self, Other, { "bgmPlay" });
+				int bgmPlay = static_cast<int>(yyrv_bgmPlay.Real);
+
+				YYRValue yyrv_gameMode;
+				CallBuiltin(yyrv_gameMode, "variable_global_get", Self, Other, { "gameMode" });
+				std::string gameMode = "";
+				if (static_cast<int>(yyrv_gameMode) == 1) gameMode = " - Endless";
+				std::string stageName = stageMap[bgmPlay].first + gameMode;
+
+				discord::Activity activity{};
+				activity.SetName("HoloCure - Save the Fans!");
+				activity.SetState(stateStr.c_str());
+				activity.SetDetails(stageName.c_str());
+				std::time_t currentTime;
+				std::time(&currentTime);
+				activity.GetTimestamps().SetStart((int)currentTime);
+				activity.GetAssets().SetLargeImage(convertToIconName(stageMap[bgmPlay].first).c_str());
+				activity.GetAssets().SetLargeText(stageMap[bgmPlay].second.c_str());
+				activity.GetAssets().SetSmallImage(charIconStr.c_str());
+				if (charName == "CERES FAUNA") {
+					std::uniform_int_distribution<int> distribution(1, 2);
+					int randomValue = distribution(gen);
+					if (randomValue == 1) {
+						activity.GetAssets().SetSmallText("UUUUUUU");
+					} else {
+						activity.GetAssets().SetSmallText(GetFormattedCharName(charName).c_str());
+					}
+				} else {
+					activity.GetAssets().SetSmallText(GetFormattedCharName(charName).c_str());
+				}
+				core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {});
+			};
+			PlayerManager_Create_0(pCodeEvent, Self, Other, Code, Res, Flags);
+			codeFuncTable[Code->i_CodeIndex] = PlayerManager_Create_0;
 		} else {
 			auto UnmodifiedFunc = [](YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
 				pCodeEvent->Call(Self, Other, Code, Res, Flags);
-				};
+			};
 			UnmodifiedFunc(pCodeEvent, Self, Other, Code, Res, Flags);
 			codeFuncTable[Code->i_CodeIndex] = UnmodifiedFunc;
 		}
@@ -178,7 +266,15 @@ DllExport YYTKStatus PluginEntry(YYTKPlugin* PluginObject) {
 	}
 	
 	core->SetLogHook(discord::LogLevel::Debug, LogProblemsFunction);
-
+	stageMap[266] = std::make_pair("Stage 1", "Grassy Plains");
+	stageMap[261] = std::make_pair("Stage 2", "Holo Office");
+	stageMap[43] = std::make_pair("Stage 3", "Halloween Castle");
+	stageMap[44] = std::make_pair("Stage 4", "Gelora Bung Yagoo");
+	stageMap[101] = std::make_pair("Stage 1 (Hard)", "Grassy Plains (Night)");
+	stageMap[268] = std::make_pair("Stage 2 (Hard)", "Holo Office (Evening)");
+	stageMap[237] = std::make_pair("Stage 3 (Hard)", "Halloween Castle (Myth)");
+	stageMap[74] = std::make_pair("Time Stage 1", "Concert Stage");
+	
 	// Off it goes to the core.
 	return YYTK_OK;
 }
