@@ -22,12 +22,12 @@ static struct Mod {
 	const char* name = MOD_NAME;
 } mod;
 
-//// Discord SDK Vars
+// Discord SDK Vars
 constexpr auto APPLICATION_ID = 1151654619244666951;
 discord::Core* core{};
 discord::Result result;
 void LogProblemsFunction(discord::LogLevel level, std::string message) {
-	PrintError(__FILE__, __LINE__, "Discord: %d - %s", level, message.c_str());
+	PrintError(__FILE__, __LINE__, "Discord: %d - %s", static_cast<int>(level), message.c_str());
 }
 std::random_device rd;
 std::mt19937 gen(rd());
@@ -61,13 +61,13 @@ std::string GetFormattedCharName(std::string charName) {
 	return charName;
 }
 std::string convertToIconName(const std::string& input) {
-	std::string result = input;
-	result.erase(std::remove(result.begin(), result.end(), '('), result.end());
-	result.erase(std::remove(result.begin(), result.end(), ')'), result.end());
-	std::replace(result.begin(), result.end(), ' ', '_');
-	std::transform(result.begin(), result.end(), result.begin(), ::tolower);
-	result += "_icon";
-	return result;
+	std::string str = input;
+	str.erase(std::remove(str.begin(), str.end(), '('), str.end());
+	str.erase(std::remove(str.begin(), str.end(), ')'), str.end());
+	std::replace(str.begin(), str.end(), ' ', '_');
+	std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+	str += "_icon";
+	return str;
 }
 std::map<int, std::pair<std::string, std::string>> stageMap;
 
@@ -87,8 +87,10 @@ static std::unordered_map<int, std::function<void(YYTKCodeEvent* pCodeEvent, CIn
 // This callback is registered on EVT_PRESENT and EVT_ENDSCENE, so it gets called every frame on DX9 / DX11 games.
 YYTKStatus FrameCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 	FrameNumber++;
-
-	::core->RunCallbacks();
+	
+	if (result == discord::Result::Ok) {
+		result = ::core->RunCallbacks();
+	}
 
 	// Tell the core the handler was successful.
 	return YYTK_OK;
@@ -104,7 +106,7 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 	CInstance* Other = std::get<1>(args);
 	CCode* Code = std::get<2>(args);
 	RValue* Res = std::get<3>(args);
-	int			Flags = std::get<4>(args);
+	int Flags = std::get<4>(args);
 
 	if (!Code->i_pName) {
 		return YYTK_INVALIDARG;
@@ -125,17 +127,19 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 					versionTextChanged = true;
 				}
 
-				discord::Activity activity{};
-				activity.SetName("HoloCure - Save the Fans!");
-				activity.SetState("On Title Screen");
-				std::time_t currentTime;
-				std::time(&currentTime);
-				activity.GetTimestamps().SetStart((int)currentTime);
-				activity.GetAssets().SetLargeImage(GetRandomTitleIcon().c_str());
-				activity.GetAssets().SetLargeText("On Title Screen");
-				core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {});
-
 				pCodeEvent->Call(Self, Other, Code, Res, Flags);
+
+				if (result == discord::Result::Ok) {
+					discord::Activity activity{};
+					activity.SetName("HoloCure - Save the Fans!");
+					activity.SetState("On Title Screen");
+					std::time_t currentTime;
+					std::time(&currentTime);
+					activity.GetTimestamps().SetStart((int)currentTime);
+					activity.GetAssets().SetLargeImage(GetRandomTitleIcon().c_str());
+					activity.GetAssets().SetLargeText("On Title Screen");
+					core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {});
+				}
 			};
 			TitleScreen_Create_0(pCodeEvent, Self, Other, Code, Res, Flags);
 			codeFuncTable[Code->i_CodeIndex] = TitleScreen_Create_0;
@@ -156,44 +160,46 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 		} else if (_strcmpi(Code->i_pName, "gml_Object_obj_PlayerManager_Create_0") == 0) {
 			auto PlayerManager_Create_0 = [](YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
 				pCodeEvent->Call(Self, Other, Code, Res, Flags);
-				YYRValue yyrv_charName;
-				CallBuiltin(yyrv_charName, "variable_instance_get", Self, Other, { (long long)Self->i_id, "charName" });
-				std::string charName = yyrv_charName.String->Get();
-				std::string stateStr = "Playing " + GetFormattedCharName(charName);
-				std::string charIconStr = convertToIconName(charName);
+				if (result == discord::Result::Ok) {
+					YYRValue yyrv_charName;
+					CallBuiltin(yyrv_charName, "variable_instance_get", Self, Other, { (long long)Self->i_id, "charName" });
+					std::string charName = yyrv_charName.String->Get();
+					std::string stateStr = "Playing " + GetFormattedCharName(charName);
+					std::string charIconStr = convertToIconName(charName);
 
-				YYRValue yyrv_bgmPlay;
-				CallBuiltin(yyrv_bgmPlay, "variable_global_get", Self, Other, { "bgmPlay" });
-				int bgmPlay = static_cast<int>(yyrv_bgmPlay.Real);
+					YYRValue yyrv_bgmPlay;
+					CallBuiltin(yyrv_bgmPlay, "variable_global_get", Self, Other, { "bgmPlay" });
+					int bgmPlay = static_cast<int>(yyrv_bgmPlay.Real);
 
-				YYRValue yyrv_gameMode;
-				CallBuiltin(yyrv_gameMode, "variable_global_get", Self, Other, { "gameMode" });
-				std::string gameMode = "";
-				if (static_cast<int>(yyrv_gameMode) == 1) gameMode = " - Endless";
-				std::string stageName = stageMap[bgmPlay].first + gameMode;
+					YYRValue yyrv_gameMode;
+					CallBuiltin(yyrv_gameMode, "variable_global_get", Self, Other, { "gameMode" });
+					std::string gameMode = "";
+					if (static_cast<int>(yyrv_gameMode) == 1) gameMode = " - Endless";
+					std::string stageName = stageMap[bgmPlay].first + gameMode;
 
-				discord::Activity activity{};
-				activity.SetName("HoloCure - Save the Fans!");
-				activity.SetState(stateStr.c_str());
-				activity.SetDetails(stageName.c_str());
-				std::time_t currentTime;
-				std::time(&currentTime);
-				activity.GetTimestamps().SetStart((int)currentTime);
-				activity.GetAssets().SetLargeImage(convertToIconName(stageMap[bgmPlay].first).c_str());
-				activity.GetAssets().SetLargeText(stageMap[bgmPlay].second.c_str());
-				activity.GetAssets().SetSmallImage(charIconStr.c_str());
-				if (charName == "CERES FAUNA") {
-					std::uniform_int_distribution<int> distribution(1, 2);
-					int randomValue = distribution(gen);
-					if (randomValue == 1) {
-						activity.GetAssets().SetSmallText("UUUUUUU");
+					discord::Activity activity{};
+					activity.SetName("HoloCure - Save the Fans!");
+					activity.SetState(stateStr.c_str());
+					activity.SetDetails(stageName.c_str());
+					std::time_t currentTime;
+					std::time(&currentTime);
+					activity.GetTimestamps().SetStart((int)currentTime);
+					activity.GetAssets().SetLargeImage(convertToIconName(stageMap[bgmPlay].first).c_str());
+					activity.GetAssets().SetLargeText(stageMap[bgmPlay].second.c_str());
+					activity.GetAssets().SetSmallImage(charIconStr.c_str());
+					if (charName == "CERES FAUNA") {
+						std::uniform_int_distribution<int> distribution(1, 2);
+						int randomValue = distribution(gen);
+						if (randomValue == 1) {
+							activity.GetAssets().SetSmallText("UUUUUUU");
+						} else {
+							activity.GetAssets().SetSmallText(GetFormattedCharName(charName).c_str());
+						}
 					} else {
 						activity.GetAssets().SetSmallText(GetFormattedCharName(charName).c_str());
 					}
-				} else {
-					activity.GetAssets().SetSmallText(GetFormattedCharName(charName).c_str());
+					core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {});
 				}
-				core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {});
 			};
 			PlayerManager_Create_0(pCodeEvent, Self, Other, Code, Res, Flags);
 			codeFuncTable[Code->i_CodeIndex] = PlayerManager_Create_0;
@@ -259,12 +265,11 @@ DllExport YYTKStatus PluginEntry(YYTKPlugin* PluginObject) {
 	/*
 								Discord Rich Presence Initialization
 	*/
-	result = discord::Core::Create(APPLICATION_ID, DiscordCreateFlags_Default, &core);
+	result = discord::Core::Create(APPLICATION_ID, (uint64_t)discord::CreateFlags::NoRequireDiscord, &core);
 	if (result != discord::Result::Ok) {
-		PrintError(__FILE__, __LINE__, "Discord initialization failed: %s", result);
-		return YYTK_FAIL;
+		PrintError(__FILE__, __LINE__, "Discord initialization failed: %d - is your Discord closed?", static_cast<int>(result));
+		return YYTK_OK;
 	}
-	
 	core->SetLogHook(discord::LogLevel::Debug, LogProblemsFunction);
 	stageMap[266] = std::make_pair("Stage 1", "Grassy Plains");
 	stageMap[261] = std::make_pair("Stage 2", "Holo Office");
