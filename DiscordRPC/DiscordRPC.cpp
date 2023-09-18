@@ -26,6 +26,8 @@ static struct Mod {
 constexpr auto APPLICATION_ID = 1151654619244666951;
 discord::Core* core{};
 discord::Result result;
+std::string currentState;
+int UUUUUUUChance = 10;
 void LogProblemsFunction(discord::LogLevel level, std::string message) {
 	PrintError(__FILE__, __LINE__, "Discord: %d - %s", static_cast<int>(level), message.c_str());
 }
@@ -129,9 +131,9 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 
 				pCodeEvent->Call(Self, Other, Code, Res, Flags);
 
-				if (result == discord::Result::Ok) {
+				if (result == discord::Result::Ok && currentState != "title") {
+					currentState = "title";
 					discord::Activity activity{};
-					activity.SetName("HoloCure - Save the Fans!");
 					activity.SetState("On Title Screen");
 					std::time_t currentTime;
 					std::time(&currentTime);
@@ -160,7 +162,8 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 		} else if (_strcmpi(Code->i_pName, "gml_Object_obj_PlayerManager_Create_0") == 0) {
 			auto PlayerManager_Create_0 = [](YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
 				pCodeEvent->Call(Self, Other, Code, Res, Flags);
-				if (result == discord::Result::Ok) {
+				if (result == discord::Result::Ok && currentState != "stage") {
+					currentState = "stage";
 					YYRValue yyrv_charName;
 					CallBuiltin(yyrv_charName, "variable_instance_get", Self, Other, { (long long)Self->i_id, "charName" });
 					std::string charName = yyrv_charName.String->Get();
@@ -178,7 +181,6 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 					std::string stageName = stageMap[bgmPlay].first + gameMode;
 
 					discord::Activity activity{};
-					activity.SetName("HoloCure - Save the Fans!");
 					activity.SetState(stateStr.c_str());
 					activity.SetDetails(stageName.c_str());
 					std::time_t currentTime;
@@ -188,7 +190,7 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 					activity.GetAssets().SetLargeText(stageMap[bgmPlay].second.c_str());
 					activity.GetAssets().SetSmallImage(charIconStr.c_str());
 					if (charName == "CERES FAUNA") {
-						std::uniform_int_distribution<int> distribution(1, 2);
+						std::uniform_int_distribution<int> distribution(1, UUUUUUUChance);
 						int randomValue = distribution(gen);
 						if (randomValue == 1) {
 							activity.GetAssets().SetSmallText("UUUUUUU");
@@ -203,6 +205,42 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 			};
 			PlayerManager_Create_0(pCodeEvent, Self, Other, Code, Res, Flags);
 			codeFuncTable[Code->i_CodeIndex] = PlayerManager_Create_0;
+		} else if (_strcmpi(Code->i_pName, "gml_Object_obj_HoloHouseManager_Create_0") == 0) {
+			auto HoloHouseManager_Create_0 = [](YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
+				pCodeEvent->Call(Self, Other, Code, Res, Flags);
+				if (result == discord::Result::Ok && currentState != "house") {
+					currentState = "house";
+					YYRValue yyrv_charName;
+					CallBuiltin(yyrv_charName, "variable_instance_get", Self, Other, { (long long)Self->i_id, "charName" });
+					std::string charName = yyrv_charName.String->Get();
+					std::string stateStr = "Playing " + GetFormattedCharName(charName);
+					std::string charIconStr = convertToIconName(charName);
+
+					discord::Activity activity{};
+					activity.SetState(stateStr.c_str());
+					activity.SetDetails("In Holo House");
+					std::time_t currentTime;
+					std::time(&currentTime);
+					activity.GetTimestamps().SetStart((int)currentTime);
+					activity.GetAssets().SetLargeImage("holohouse_icon");
+					activity.GetAssets().SetLargeText("Main Entrance");
+					activity.GetAssets().SetSmallImage(charIconStr.c_str());
+					if (charName == "CERES FAUNA") {
+						std::uniform_int_distribution<int> distribution(1, UUUUUUUChance);
+						int randomValue = distribution(gen);
+						if (randomValue == 1) {
+							activity.GetAssets().SetSmallText("UUUUUUU");
+						} else {
+							activity.GetAssets().SetSmallText(GetFormattedCharName(charName).c_str());
+						}
+					} else {
+						activity.GetAssets().SetSmallText(GetFormattedCharName(charName).c_str());
+					}
+					core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {});
+				}
+			};
+			HoloHouseManager_Create_0(pCodeEvent, Self, Other, Code, Res, Flags);
+			codeFuncTable[Code->i_CodeIndex] = HoloHouseManager_Create_0;
 		} else {
 			auto UnmodifiedFunc = [](YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
 				pCodeEvent->Call(Self, Other, Code, Res, Flags);
