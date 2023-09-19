@@ -73,6 +73,15 @@ std::string convertToIconName(const std::string& input) {
 }
 std::map<int, std::pair<std::string, std::string>> stageMap;
 
+std::string GetFileName(const char* File) {
+	std::string sFileName(File);
+	size_t LastSlashPos = sFileName.find_last_of("\\");
+	if (LastSlashPos != std::string::npos && LastSlashPos != sFileName.length()) {
+		sFileName = sFileName.substr(LastSlashPos + 1);
+	}
+	return sFileName;
+}
+
 // CallBuiltIn is way too slow to use per frame. Need to investigate if there's a better way to call in built functions.
 
 // We save the CodeCallbackHandler attributes here, so we can unregister the callback in the unload routine.
@@ -124,12 +133,20 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 				if (versionTextChanged == false) {
 					YYRValue yyrv_version;
 					CallBuiltin(yyrv_version, "variable_global_get", Self, Other, { "version" });
-					std::string moddedVerStr = yyrv_version.operator std::string() + " (Modded)";
-					CallBuiltin(yyrv_version, "variable_global_set", Self, Other, { "version", moddedVerStr.c_str() });
+					PrintMessage(CLR_AQUA, "[%s:%d] variable_global_get : version", GetFileName(__FILE__).c_str(), __LINE__);
+					if (yyrv_version.operator std::string().find("Modded") == std::string::npos) {
+						std::string moddedVerStr = yyrv_version.operator std::string() + " (Modded)";
+						CallBuiltin(yyrv_version, "variable_global_set", Self, Other, { "version", moddedVerStr.c_str() });
+						PrintMessage(CLR_TANGERINE, "[%s:%d] variable_global_set : version", GetFileName(__FILE__).c_str(), __LINE__);
+					}
 					versionTextChanged = true;
 				}
 
-				pCodeEvent->Call(Self, Other, Code, Res, Flags);
+				if (pCodeEvent->CalledOriginal() == true) {
+					pCodeEvent->Cancel(true);
+				} else {
+					pCodeEvent->Call(Self, Other, Code, Res, Flags);
+				}
 
 				if (result == discord::Result::Ok && currentState != "title") {
 					currentState = "title";
@@ -147,35 +164,51 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 			codeFuncTable[Code->i_CodeIndex] = TitleScreen_Create_0;
 		} else if (_strcmpi(Code->i_pName, "gml_Object_obj_TextController_Create_0") == 0) {
 			auto TextController_Create_0 = [](YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
+				if (pCodeEvent->CalledOriginal() == true) {
+					pCodeEvent->Cancel(true);
+				} else {
+					pCodeEvent->Call(Self, Other, Code, Res, Flags);
+				}
 				YYRValue yyrv_textContainer;
-				pCodeEvent->Call(Self, Other, Code, Res, Flags);
 				CallBuiltin(yyrv_textContainer, "variable_global_get", Self, Other, { "TextContainer" });
+				PrintMessage(CLR_AQUA, "[%s:%d] variable_global_get : TextContainer", GetFileName(__FILE__).c_str(), __LINE__);
 				YYRValue yyrv_titleButtons;
 				CallBuiltin(yyrv_titleButtons, "struct_get", Self, Other, { yyrv_textContainer, "titleButtons" });
+				PrintMessage(CLR_AQUA, "[%s:%d] struct_get : titleButtons", GetFileName(__FILE__).c_str(), __LINE__);
 				YYRValue yyrv_eng;
 				CallBuiltin(yyrv_eng, "struct_get", Self, Other, { yyrv_titleButtons, "eng" });
-
-				yyrv_eng.RefArray->m_Array[0].String = &tempVar;
+				PrintMessage(CLR_AQUA, "[%s:%d] struct_get : eng", GetFileName(__FILE__).c_str(), __LINE__);
+				if (std::string(yyrv_eng.RefArray->m_Array[0].String->Get()).find("Modded") == std::string::npos) {
+					yyrv_eng.RefArray->m_Array[0].String = &tempVar;
+					PrintMessage(CLR_TANGERINE, "[%s:%d] variable_global_set : eng[0]", GetFileName(__FILE__).c_str(), __LINE__);
+				}
 			};
 			TextController_Create_0(pCodeEvent, Self, Other, Code, Res, Flags);
 			codeFuncTable[Code->i_CodeIndex] = TextController_Create_0;
 		} else if (_strcmpi(Code->i_pName, "gml_Object_obj_PlayerManager_Create_0") == 0) {
 			auto PlayerManager_Create_0 = [](YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
-				pCodeEvent->Call(Self, Other, Code, Res, Flags);
+				if (pCodeEvent->CalledOriginal() == true) {
+					pCodeEvent->Cancel(true);
+				} else {
+					pCodeEvent->Call(Self, Other, Code, Res, Flags);
+				}
 				if (result == discord::Result::Ok && currentState != "stage") {
 					currentState = "stage";
 					YYRValue yyrv_charName;
 					CallBuiltin(yyrv_charName, "variable_instance_get", Self, Other, { (long long)Self->i_id, "charName" });
+					PrintMessage(CLR_AQUA, "[%s:%d] variable_instance_get : charName", GetFileName(__FILE__).c_str(), __LINE__);
 					std::string charName = yyrv_charName.String->Get();
 					std::string stateStr = "Playing " + GetFormattedCharName(charName);
 					std::string charIconStr = convertToIconName(charName);
 
 					YYRValue yyrv_bgmPlay;
 					CallBuiltin(yyrv_bgmPlay, "variable_global_get", Self, Other, { "bgmPlay" });
+					PrintMessage(CLR_AQUA, "[%s:%d] variable_global_get : bgmPlay", GetFileName(__FILE__).c_str(), __LINE__);
 					int bgmPlay = static_cast<int>(yyrv_bgmPlay.Real);
 
 					YYRValue yyrv_gameMode;
 					CallBuiltin(yyrv_gameMode, "variable_global_get", Self, Other, { "gameMode" });
+					PrintMessage(CLR_AQUA, "[%s:%d] variable_global_get : gameMode", GetFileName(__FILE__).c_str(), __LINE__);
 					std::string gameMode = "";
 					if (static_cast<int>(yyrv_gameMode) == 1) gameMode = " - Endless";
 					std::string stageName = stageMap[bgmPlay].first + gameMode;
@@ -207,11 +240,16 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 			codeFuncTable[Code->i_CodeIndex] = PlayerManager_Create_0;
 		} else if (_strcmpi(Code->i_pName, "gml_Object_obj_HoloHouseManager_Create_0") == 0) {
 			auto HoloHouseManager_Create_0 = [](YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
-				pCodeEvent->Call(Self, Other, Code, Res, Flags);
+				if (pCodeEvent->CalledOriginal() == true) {
+					pCodeEvent->Cancel(true);
+				} else {
+					pCodeEvent->Call(Self, Other, Code, Res, Flags);
+				}
 				if (result == discord::Result::Ok && currentState != "house") {
 					currentState = "house";
 					YYRValue yyrv_charName;
 					CallBuiltin(yyrv_charName, "variable_instance_get", Self, Other, { (long long)Self->i_id, "charName" });
+					PrintMessage(CLR_AQUA, "[%s:%d] variable_instance_get : charName", GetFileName(__FILE__).c_str(), __LINE__);
 					std::string charName = yyrv_charName.String->Get();
 					std::string stateStr = "Playing " + GetFormattedCharName(charName);
 					std::string charIconStr = convertToIconName(charName);
@@ -243,7 +281,11 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 			codeFuncTable[Code->i_CodeIndex] = HoloHouseManager_Create_0;
 		} else {
 			auto UnmodifiedFunc = [](YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
-				pCodeEvent->Call(Self, Other, Code, Res, Flags);
+				if (pCodeEvent->CalledOriginal() == true) {
+					pCodeEvent->Cancel(true);
+				} else {
+					pCodeEvent->Call(Self, Other, Code, Res, Flags);
+				}
 			};
 			UnmodifiedFunc(pCodeEvent, Self, Other, Code, Res, Flags);
 			codeFuncTable[Code->i_CodeIndex] = UnmodifiedFunc;
