@@ -1,12 +1,13 @@
 #pragma once
 #define VERSION_MAJOR 1
 #define VERSION_MINOR 3
-#define VERSION_BUILD 5
+#define VERSION_BUILD 6
 #define MOD_NAME "Discord RPC"
 #define HAS_CONFIG false
 
 #define stringify(a) stringify_(a)
 #define stringify_(a) #a
+
 
 
 

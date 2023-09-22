@@ -82,6 +82,12 @@ std::string GetFileName(const char* File) {
 	return sFileName;
 }
 
+inline void CallOriginal(YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
+	if (!pCodeEvent->CalledOriginal()) {
+		pCodeEvent->Call(Self, Other, Code, Res, Flags);
+	}
+}
+
 // CallBuiltIn is way too slow to use per frame. Need to investigate if there's a better way to call in built functions.
 
 // We save the CodeCallbackHandler attributes here, so we can unregister the callback in the unload routine.
@@ -142,11 +148,7 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 					versionTextChanged = true;
 				}
 
-				if (pCodeEvent->CalledOriginal() == true) {
-					pCodeEvent->Cancel(true);
-				} else {
-					pCodeEvent->Call(Self, Other, Code, Res, Flags);
-				}
+				CallOriginal(pCodeEvent, Self, Other, Code, Res, Flags);
 
 				if (result == discord::Result::Ok && currentState != "title") {
 					currentState = "title";
@@ -164,11 +166,7 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 			codeFuncTable[Code->i_CodeIndex] = TitleScreen_Create_0;
 		} else if (_strcmpi(Code->i_pName, "gml_Object_obj_TextController_Create_0") == 0) {
 			auto TextController_Create_0 = [](YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
-				if (pCodeEvent->CalledOriginal() == true) {
-					pCodeEvent->Cancel(true);
-				} else {
-					pCodeEvent->Call(Self, Other, Code, Res, Flags);
-				}
+				CallOriginal(pCodeEvent, Self, Other, Code, Res, Flags);
 				YYRValue yyrv_textContainer;
 				CallBuiltin(yyrv_textContainer, "variable_global_get", Self, Other, { "TextContainer" });
 				PrintMessage(CLR_AQUA, "[%s:%d] variable_global_get : TextContainer", GetFileName(__FILE__).c_str(), __LINE__);
@@ -187,11 +185,7 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 			codeFuncTable[Code->i_CodeIndex] = TextController_Create_0;
 		} else if (_strcmpi(Code->i_pName, "gml_Object_obj_PlayerManager_Create_0") == 0) {
 			auto PlayerManager_Create_0 = [](YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
-				if (pCodeEvent->CalledOriginal() == true) {
-					pCodeEvent->Cancel(true);
-				} else {
-					pCodeEvent->Call(Self, Other, Code, Res, Flags);
-				}
+				CallOriginal(pCodeEvent, Self, Other, Code, Res, Flags);
 				if (result == discord::Result::Ok && currentState != "stage") {
 					currentState = "stage";
 					YYRValue yyrv_charName;
@@ -240,11 +234,7 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 			codeFuncTable[Code->i_CodeIndex] = PlayerManager_Create_0;
 		} else if (_strcmpi(Code->i_pName, "gml_Object_obj_HoloHouseManager_Create_0") == 0) {
 			auto HoloHouseManager_Create_0 = [](YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
-				if (pCodeEvent->CalledOriginal() == true) {
-					pCodeEvent->Cancel(true);
-				} else {
-					pCodeEvent->Call(Self, Other, Code, Res, Flags);
-				}
+				CallOriginal(pCodeEvent, Self, Other, Code, Res, Flags);
 				if (result == discord::Result::Ok && currentState != "house") {
 					currentState = "house";
 					YYRValue yyrv_charName;
@@ -281,11 +271,7 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 			codeFuncTable[Code->i_CodeIndex] = HoloHouseManager_Create_0;
 		} else {
 			auto UnmodifiedFunc = [](YYTKCodeEvent* pCodeEvent, CInstance* Self, CInstance* Other, CCode* Code, RValue* Res, int Flags) {
-				if (pCodeEvent->CalledOriginal() == true) {
-					pCodeEvent->Cancel(true);
-				} else {
-					pCodeEvent->Call(Self, Other, Code, Res, Flags);
-				}
+				CallOriginal(pCodeEvent, Self, Other, Code, Res, Flags);
 			};
 			UnmodifiedFunc(pCodeEvent, Self, Other, Code, Res, Flags);
 			codeFuncTable[Code->i_CodeIndex] = UnmodifiedFunc;
