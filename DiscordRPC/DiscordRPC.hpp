@@ -5,3 +5,5 @@
 DllExport YYTKStatus PluginEntry(YYTKPlugin* PluginObject);
 YYTKStatus PluginUnload();
 YYTKStatus FrameCallback(YYTKEventBase* pEvent, void* OptionalArgument);
+void GenerateConfig(std::string fileName);
+std::string formatString(const std::string& input);

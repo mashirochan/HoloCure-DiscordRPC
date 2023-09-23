@@ -10,6 +10,10 @@
 #include <random>
 #include <map>
 #include <algorithm>
+#include <iostream>
+#include <fstream>
+#include "json.hpp"
+using json = nlohmann::json;
 
 static struct Version {
 	int major = VERSION_MAJOR;
@@ -21,6 +25,56 @@ static struct Mod {
 	Version version;
 	const char* name = MOD_NAME;
 } mod;
+
+// Config vars
+static struct Config {
+	bool debugEnabled = false;
+} config;
+
+void to_json(json& j, const Config& c) {
+	j = json{
+		{ "debugEnabled", c.debugEnabled }
+	};
+}
+
+void from_json(const json& j, Config& c) {
+	try {
+		j.at("debugEnabled").get_to(c.debugEnabled);
+	} catch (const json::out_of_range& e) {
+		PrintError(__FILE__, __LINE__, "%s", e.what());
+		std::string fileName = formatString(std::string(mod.name)) + "-config.json";
+		GenerateConfig(fileName);
+	}
+}
+
+std::string formatString(const std::string& input) {
+	std::string formattedString = input;
+
+	for (char& c : formattedString) {
+		c = std::tolower(c);
+	}
+
+	for (char& c : formattedString) {
+		if (c == ' ') {
+			c = '-';
+		}
+	}
+
+	return formattedString;
+}
+
+void GenerateConfig(std::string fileName) {
+	json data = config;
+
+	std::ofstream configFile("modconfigs/" + fileName);
+	if (configFile.is_open()) {
+		PrintMessage(CLR_DEFAULT, "[%s v%d.%d.%d] - Config file \"%s\" created!", mod.name, mod.version.major, mod.version.minor, mod.version.build, fileName.c_str());
+		configFile << std::setw(4) << data << std::endl;
+		configFile.close();
+	} else {
+		PrintError(__FILE__, __LINE__, "[%s v%d.%d.%d] - Error opening config file \"%s\"", mod.name, mod.version.major, mod.version.minor, mod.version.build, fileName.c_str());
+	}
+}
 
 // Discord SDK Vars
 constexpr auto APPLICATION_ID = 1151654619244666951;
@@ -139,11 +193,11 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 				if (versionTextChanged == false) {
 					YYRValue yyrv_version;
 					CallBuiltin(yyrv_version, "variable_global_get", Self, Other, { "version" });
-					PrintMessage(CLR_AQUA, "[%s:%d] variable_global_get : version", GetFileName(__FILE__).c_str(), __LINE__);
+					if (config.debugEnabled) PrintMessage(CLR_AQUA, "[%s:%d] variable_global_get : version", GetFileName(__FILE__).c_str(), __LINE__);
 					if (yyrv_version.operator std::string().find("Modded") == std::string::npos) {
 						std::string moddedVerStr = yyrv_version.operator std::string() + " (Modded)";
 						CallBuiltin(yyrv_version, "variable_global_set", Self, Other, { "version", moddedVerStr.c_str() });
-						PrintMessage(CLR_TANGERINE, "[%s:%d] variable_global_set : version", GetFileName(__FILE__).c_str(), __LINE__);
+						if (config.debugEnabled) PrintMessage(CLR_TANGERINE, "[%s:%d] variable_global_set : version", GetFileName(__FILE__).c_str(), __LINE__);
 					}
 					versionTextChanged = true;
 				}
@@ -169,16 +223,16 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 				CallOriginal(pCodeEvent, Self, Other, Code, Res, Flags);
 				YYRValue yyrv_textContainer;
 				CallBuiltin(yyrv_textContainer, "variable_global_get", Self, Other, { "TextContainer" });
-				PrintMessage(CLR_AQUA, "[%s:%d] variable_global_get : TextContainer", GetFileName(__FILE__).c_str(), __LINE__);
+				if (config.debugEnabled) PrintMessage(CLR_AQUA, "[%s:%d] variable_global_get : TextContainer", GetFileName(__FILE__).c_str(), __LINE__);
 				YYRValue yyrv_titleButtons;
 				CallBuiltin(yyrv_titleButtons, "struct_get", Self, Other, { yyrv_textContainer, "titleButtons" });
-				PrintMessage(CLR_AQUA, "[%s:%d] struct_get : titleButtons", GetFileName(__FILE__).c_str(), __LINE__);
+				if (config.debugEnabled) PrintMessage(CLR_AQUA, "[%s:%d] struct_get : titleButtons", GetFileName(__FILE__).c_str(), __LINE__);
 				YYRValue yyrv_eng;
 				CallBuiltin(yyrv_eng, "struct_get", Self, Other, { yyrv_titleButtons, "eng" });
-				PrintMessage(CLR_AQUA, "[%s:%d] struct_get : eng", GetFileName(__FILE__).c_str(), __LINE__);
+				if (config.debugEnabled) PrintMessage(CLR_AQUA, "[%s:%d] struct_get : eng", GetFileName(__FILE__).c_str(), __LINE__);
 				if (std::string(yyrv_eng.RefArray->m_Array[0].String->Get()).find("Modded") == std::string::npos) {
 					yyrv_eng.RefArray->m_Array[0].String = &tempVar;
-					PrintMessage(CLR_TANGERINE, "[%s:%d] variable_global_set : eng[0]", GetFileName(__FILE__).c_str(), __LINE__);
+					if (config.debugEnabled) PrintMessage(CLR_TANGERINE, "[%s:%d] variable_global_set : eng[0]", GetFileName(__FILE__).c_str(), __LINE__);
 				}
 			};
 			TextController_Create_0(pCodeEvent, Self, Other, Code, Res, Flags);
@@ -190,19 +244,19 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 					currentState = "stage";
 					YYRValue yyrv_charName;
 					CallBuiltin(yyrv_charName, "variable_instance_get", Self, Other, { (long long)Self->i_id, "charName" });
-					PrintMessage(CLR_AQUA, "[%s:%d] variable_instance_get : charName", GetFileName(__FILE__).c_str(), __LINE__);
+					if (config.debugEnabled) PrintMessage(CLR_AQUA, "[%s:%d] variable_instance_get : charName", GetFileName(__FILE__).c_str(), __LINE__);
 					std::string charName = yyrv_charName.String->Get();
 					std::string stateStr = "Playing " + GetFormattedCharName(charName);
 					std::string charIconStr = convertToIconName(charName);
 
 					YYRValue yyrv_bgmPlay;
 					CallBuiltin(yyrv_bgmPlay, "variable_global_get", Self, Other, { "bgmPlay" });
-					PrintMessage(CLR_AQUA, "[%s:%d] variable_global_get : bgmPlay", GetFileName(__FILE__).c_str(), __LINE__);
+					if (config.debugEnabled) PrintMessage(CLR_AQUA, "[%s:%d] variable_global_get : bgmPlay", GetFileName(__FILE__).c_str(), __LINE__);
 					int bgmPlay = static_cast<int>(yyrv_bgmPlay.Real);
 
 					YYRValue yyrv_gameMode;
 					CallBuiltin(yyrv_gameMode, "variable_global_get", Self, Other, { "gameMode" });
-					PrintMessage(CLR_AQUA, "[%s:%d] variable_global_get : gameMode", GetFileName(__FILE__).c_str(), __LINE__);
+					if (config.debugEnabled) PrintMessage(CLR_AQUA, "[%s:%d] variable_global_get : gameMode", GetFileName(__FILE__).c_str(), __LINE__);
 					std::string gameMode = "";
 					if (static_cast<int>(yyrv_gameMode) == 1) gameMode = " - Endless";
 					std::string stageName = stageMap[bgmPlay].first + gameMode;
@@ -239,7 +293,7 @@ YYTKStatus CodeCallback(YYTKEventBase* pEvent, void* OptionalArgument) {
 					currentState = "house";
 					YYRValue yyrv_charName;
 					CallBuiltin(yyrv_charName, "variable_instance_get", Self, Other, { (long long)Self->i_id, "charName" });
-					PrintMessage(CLR_AQUA, "[%s:%d] variable_instance_get : charName", GetFileName(__FILE__).c_str(), __LINE__);
+					if (config.debugEnabled) PrintMessage(CLR_AQUA, "[%s:%d] variable_instance_get : charName", GetFileName(__FILE__).c_str(), __LINE__);
 					std::string charName = yyrv_charName.String->Get();
 					std::string stateStr = "Playing " + GetFormattedCharName(charName);
 					std::string charIconStr = convertToIconName(charName);
@@ -326,6 +380,37 @@ DllExport YYTKStatus PluginEntry(YYTKPlugin* PluginObject) {
 	if (Status) {
 		PrintError(__FILE__, __LINE__, "[%s v%d.%d.%d] - PmCreateCallback failed with 0x%x", mod.name, mod.version.major, mod.version.minor, mod.version.build, Status);
 		return YYTK_FAIL;
+	}
+
+	if (HAS_CONFIG == true) {
+		// Load mod config file or create one if there isn't one already.
+		const wchar_t* dirName = L"modconfigs";
+
+		if (GetFileAttributes(dirName) == INVALID_FILE_ATTRIBUTES) {
+			if (CreateDirectory(dirName, NULL)) {
+				PrintMessage(CLR_GREEN, "[%s v%d.%d.%d] - Directory \"modconfigs\" created!", mod.name, mod.version.major, mod.version.minor, mod.version.build);
+			} else {
+				PrintError(__FILE__, __LINE__, "Failed to create the modconfigs directory. Error code: %lu", GetLastError());
+				return YYTK_FAIL;
+			}
+		}
+
+		std::string fileName = formatString(std::string(mod.name)) + "-config.json";
+		std::ifstream configFile("modconfigs/" + fileName);
+		json data;
+		if (configFile.is_open() == false) {	// no config file
+			GenerateConfig(fileName);
+		} else {
+			try {
+				data = json::parse(configFile);
+			} catch (json::parse_error& e) {
+				PrintError(__FILE__, __LINE__, "Message: %s\nException ID: %d\nByte Position of Error: %u", e.what(), e.id, (unsigned)e.byte);
+				return YYTK_FAIL;
+			}
+
+			config = data.template get<Config>();
+		}
+		PrintMessage(CLR_GREEN, "[%s v%d.%d.%d] - %s loaded successfully!", mod.name, mod.version.major, mod.version.minor, mod.version.build, fileName.c_str());
 	}
 
 	/*
