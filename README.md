@@ -51,5 +51,5 @@ The most likely scenario for this is that you did not properly set the Path syst
 The most likely scenario for this is that you tried to click "Add plugin" before "Open plugin folder", so the YYToolkit launcher has not created an `autoexec` folder yet. To solve this, either click "Open plugin folder" to create an `autoexec` folder automatically, or create one manually in the same directory as your `HoloCure.exe` file.
 
 ### VCRUNTIME140_1.dll was not found
-![VCRUNTIME140_1.dll was not found](https://imgur.com/6lWzUnp)
+![VCRUNTIME140_1.dll was not found](https://i.imgur.com/6lWzUnp.png)
 You need to install `Microsoft Visual C++ 2015-2022 Redistributable (x64)` which can be  found at [here](https://learn.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist).
