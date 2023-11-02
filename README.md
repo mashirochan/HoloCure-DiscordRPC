@@ -52,4 +52,5 @@ The most likely scenario for this is that you tried to click "Add plugin" before
 
 ### VCRUNTIME140_1.dll was not found
 ![VCRUNTIME140_1.dll was not found](https://i.imgur.com/6lWzUnp.png)
+
 You need to install `Microsoft Visual C++ 2015-2022 Redistributable (x64)` which can be  found at [here](https://learn.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist).
