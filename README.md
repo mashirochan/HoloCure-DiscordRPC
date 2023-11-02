@@ -40,7 +40,7 @@ Here are some common problems you could have that are preventing your mod from n
 
 The most likely scenario for this is that you did not delete, rename, or move the `steam_api64.dll` and `Steamworks_x64.dll` files in whatever directory the `HoloCure.exe` that you want to mod is in.
 
-### Failed to load 'discord-rpc.dll' - the file may not be a plugin.
+### Failed to load 'discord-rpc.dll' - the file may not be a plugin
 ![Failed to load](https://i.imgur.com/B7nN8y2.png)
 
 The most likely scenario for this is that you did not properly set the Path system environment variable to your `discord_game_sdk.dll`. I recommend just placing it in the same directory as your `HoloCure.exe` file, and then following [this guide](https://www.imatest.com/support/docs/23-1/editing-system-environment-variables/#Windows) to set your Path variable.
@@ -49,3 +49,7 @@ The most likely scenario for this is that you did not properly set the Path syst
 ![Failed to install plugin](https://i.imgur.com/fcg1WWe.png)
 
 The most likely scenario for this is that you tried to click "Add plugin" before "Open plugin folder", so the YYToolkit launcher has not created an `autoexec` folder yet. To solve this, either click "Open plugin folder" to create an `autoexec` folder automatically, or create one manually in the same directory as your `HoloCure.exe` file.
+
+### VCRUNTIME140_1.dll was not found
+![VCRUNTIME140_1.dll was not found](https://imgur.com/6lWzUnp)
+You need to install `Microsoft Visual C++ 2015-2022 Redistributable (x64)` which can be  found at [here](https://learn.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist).
