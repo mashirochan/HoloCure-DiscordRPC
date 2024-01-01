@@ -48,12 +48,11 @@
 #endif // AURIE_FWK_MINOR
 
 #ifndef AURIE_FWK_PATCH
-#define AURIE_FWK_PATCH 0
+#define AURIE_FWK_PATCH 3
 #endif // AURIE_FWK_PATCH
 
 
-namespace Aurie
-{
+namespace Aurie {
 	namespace fs = ::std::filesystem;
 
 	// Opaque
@@ -67,8 +66,7 @@ namespace Aurie
 	struct AurieInterfaceBase;
 	using PVOID = void*; // Allow usage of PVOID even without including PVOID
 
-	enum AurieStatus : uint32_t
-	{
+	enum AurieStatus : uint32_t {
 		// The operation completed successfully.
 		AURIE_SUCCESS = 0,
 		// An invalid architecture was specified.
@@ -101,8 +99,7 @@ namespace Aurie
 		AURIE_OBJECT_NOT_FOUND
 	};
 
-	enum AurieObjectType : uint32_t
-	{
+	enum AurieObjectType : uint32_t {
 		// An AurieModule object
 		AURIE_OBJECT_MODULE = 1,
 		// An AurieInterfaceBase object
@@ -113,8 +110,7 @@ namespace Aurie
 		AURIE_OBJECT_HOOK = 4
 	};
 
-	enum AurieModuleOperationType : uint32_t
-	{
+	enum AurieModuleOperationType : uint32_t {
 		AURIE_OPERATION_UNKNOWN = 0,
 		// The call is a ModulePreinitialize call
 		AURIE_OPERATION_PREINITIALIZE = 1,
@@ -124,15 +120,13 @@ namespace Aurie
 		AURIE_OPERATION_UNLOAD = 3
 	};
 
-	constexpr inline bool AurieSuccess(const AurieStatus Status) noexcept
-	{
+	constexpr inline bool AurieSuccess(const AurieStatus Status) noexcept {
 		return Status == AURIE_SUCCESS;
 	}
 
 	// All interfaces must inherit from the following class
 	// You can add your own functions (make sure to open-source the interface class declaration)
-	struct AurieInterfaceBase
-	{
+	struct AurieInterfaceBase {
 		// Interface "constructor"
 		virtual AurieStatus Create() = 0;
 		// Interface "destructor"
@@ -143,6 +137,18 @@ namespace Aurie
 			OUT short& Minor,
 			OUT short& Patch
 		) = 0;
+	};
+
+	struct AurieOperationInfo {
+		union {
+			uint8_t Flags;
+			struct {
+				bool IsFutureCall : 1;
+				bool Reserved : 7;
+			};
+		};
+
+		PVOID ModuleBaseAddress;
 	};
 
 	// Always points to the initial Aurie image
@@ -163,9 +169,9 @@ namespace Aurie
 		);
 
 	using AurieModuleCallback = void(*)(
-		IN const AurieModule* const AffectedModule,
-		IN const AurieModuleOperationType OperationType,
-		IN const bool IsFutureCall
+		IN AurieModule* AffectedModule,
+		IN AurieModuleOperationType OperationType,
+		OPTIONAL IN OUT AurieOperationInfo* OperationInfo
 		);
 }
 
@@ -173,12 +179,10 @@ namespace Aurie
 #include <functional>
 #include <Windows.h>
 
-namespace Aurie
-{
+namespace Aurie {
 	inline AurieModule* g_ArSelfModule = nullptr;
 
-	namespace Internal
-	{
+	namespace Internal {
 		// Points to aurie!PpGetFrameworkRoutine
 		// Initialized in __aurie_fwk_init
 		// Only present in loadable modules
@@ -190,8 +194,7 @@ namespace Aurie
 			HINSTANCE,  // handle to DLL module
 			DWORD,		// reason for calling function
 			LPVOID		// reserved
-		)
-		{
+		) {
 			return TRUE;
 		}
 
@@ -201,8 +204,7 @@ namespace Aurie
 			IN OPTIONAL AurieEntry Routine,
 			IN OPTIONAL const fs::path& Path,
 			IN OPTIONAL AurieModule* SelfModule
-		)
-		{
+		) {
 			if (!g_ArInitialImage)
 				g_ArInitialImage = InitialImage;
 
@@ -219,17 +221,14 @@ namespace Aurie
 		}
 
 		template <typename TFunction>
-		class AurieApiDispatcher
-		{
+		class AurieApiDispatcher {
 		private:
 			using ReturnType = std::function<TFunction>::result_type;
 		public:
 			template <typename ...TArgs>
-			ReturnType operator()(const char* FunctionName, TArgs&... Args)
-			{
+			ReturnType operator()(const char* FunctionName, TArgs&... Args) {
 				auto Func = reinterpret_cast<TFunction*>(g_PpGetFrameworkRoutine(FunctionName));
-				if (!Func)
-				{
+				if (!Func) {
 					std::string error_string = "Tried to call function ";
 					error_string.append(FunctionName);
 					error_string.append(", but PpGetFrameworkRoutine returns nullptr!\n\n");
@@ -242,11 +241,9 @@ namespace Aurie
 				return Func(Args...);
 			}
 
-			ReturnType operator()(const char* FunctionName)
-			{
+			ReturnType operator()(const char* FunctionName) {
 				auto Func = reinterpret_cast<TFunction*>(g_PpGetFrameworkRoutine(FunctionName));
-				if (!Func)
-				{
+				if (!Func) {
 					std::string error_string = "Tried to call function ";
 					error_string.append(FunctionName);
 					error_string.append(", but PpGetFrameworkRoutine returns nullptr!\n\n");
@@ -264,12 +261,10 @@ namespace Aurie
 
 #define AURIE_API_CALL(Function, ...) ::Aurie::Internal::AurieApiDispatcher<decltype(Function)>()(#Function, __VA_ARGS__)
 
-namespace Aurie
-{
+namespace Aurie {
 	inline AurieStatus ElIsProcessSuspended(
 		OUT bool& Suspended
-	)
-	{
+	) {
 		return AURIE_API_CALL(ElIsProcessSuspended, Suspended);
 	}
 
@@ -277,38 +272,33 @@ namespace Aurie
 		OUT OPTIONAL short* Major,
 		OUT OPTIONAL short* Minor,
 		OUT OPTIONAL short* Patch
-	)
-	{
+	) {
 		return AURIE_API_CALL(MmGetFrameworkVersion, Major, Minor, Patch);
 	}
 
 	inline PVOID MmAllocatePersistentMemory(
 		IN size_t Size
-	)
-	{
+	) {
 		return AURIE_API_CALL(MmAllocatePersistentMemory, Size);
 	}
 
 	inline PVOID MmAllocateMemory(
 		IN AurieModule* Owner,
 		IN size_t Size
-	)
-	{
+	) {
 		return AURIE_API_CALL(MmAllocateMemory, Owner, Size);
 	}
 
 	inline AurieStatus MmFreePersistentMemory(
 		IN PVOID AllocationBase
-	)
-	{
+	) {
 		return AURIE_API_CALL(MmFreePersistentMemory, AllocationBase);
 	}
 
 	inline AurieStatus MmFreeMemory(
 		IN AurieModule* Owner,
 		IN PVOID AllocationBase
-	)
-	{
+	) {
 		return AURIE_API_CALL(MmFreeMemory, Owner, AllocationBase);
 	}
 
@@ -316,8 +306,7 @@ namespace Aurie
 		IN const wchar_t* ModuleName,
 		IN const unsigned char* Pattern,
 		IN const char* PatternMask
-	)
-	{
+	) {
 		return AURIE_API_CALL(MmSigscanModule, ModuleName, Pattern, PatternMask);
 	}
 
@@ -326,8 +315,7 @@ namespace Aurie
 		IN const size_t RegionSize,
 		IN const unsigned char* Pattern,
 		IN const char* PatternMask
-	)
-	{
+	) {
 		return AURIE_API_CALL(MmSigscanRegion, RegionBase, RegionSize, Pattern, PatternMask);
 	}
 
@@ -337,42 +325,36 @@ namespace Aurie
 		IN PVOID SourceFunction,
 		IN PVOID DestinationFunction,
 		OUT OPTIONAL PVOID* Trampoline
-	)
-	{
+	) {
 		return AURIE_API_CALL(MmCreateHook, Module, HookIdentifier, SourceFunction, DestinationFunction, Trampoline);
 	}
 
 	inline AurieStatus MmHookExists(
 		IN AurieModule* Module,
 		IN std::string_view HookIdentifier
-	)
-	{
+	) {
 		return AURIE_API_CALL(MmHookExists, Module, HookIdentifier);
 	}
 
 	inline PVOID MmGetHookTrampoline(
 		IN AurieModule* Module,
 		IN std::string_view HookIdentifier
-	)
-	{
+	) {
 		return AURIE_API_CALL(MmGetHookTrampoline, Module, HookIdentifier);
 	}
 
 	inline AurieStatus MmRemoveHook(
 		IN AurieModule* Module,
 		IN std::string_view HookIdentifier
-	)
-	{
+	) {
 		return AURIE_API_CALL(MmRemoveHook, Module, HookIdentifier);
 	}
 
-	namespace Internal
-	{
+	namespace Internal {
 		inline bool MmpIsAllocatedMemory(
 			IN AurieModule* Module,
 			IN PVOID AllocationBase
-		)
-		{
+		) {
 			return AURIE_API_CALL(MmpIsAllocatedMemory, Module, AllocationBase);
 		}
 
@@ -382,8 +364,7 @@ namespace Aurie
 			IN const unsigned char* Pattern,
 			IN const char* PatternMask,
 			OUT uintptr_t& PatternBase
-		)
-		{
+		) {
 			return AURIE_API_CALL(MmpSigscanRegion, RegionBase, RegionSize, Pattern, PatternMask, PatternBase);
 		}
 	}
@@ -391,95 +372,89 @@ namespace Aurie
 	inline AurieStatus MdMapImage(
 		IN const fs::path& ImagePath,
 		OUT AurieModule*& Module
-	)
-	{
+	) {
 		return AURIE_API_CALL(MdMapImage, ImagePath, Module);
 	}
 
 	inline bool MdIsImagePreinitialized(
 		IN AurieModule* Module
-	)
-	{
+	) {
 		return AURIE_API_CALL(MdIsImagePreinitialized, Module);
 	}
 
 	inline bool MdIsImageInitialized(
 		IN AurieModule* Module
-	)
-	{
+	) {
 		return AURIE_API_CALL(MdIsImageInitialized, Module);
 	}
+
+	inline bool MdIsImageRuntimeLoaded(
+		IN AurieModule* Module
+	) {
+		return AURIE_API_CALL(MdIsImageRuntimeLoaded, Module);
+	}
+
 
 	inline AurieStatus MdMapFolder(
 		IN const fs::path& FolderPath,
 		IN bool Recursive
-	)
-	{
+	) {
 		return AURIE_API_CALL(MdMapFolder, FolderPath, Recursive);
 	}
 
 	inline AurieStatus MdGetImageFilename(
 		IN AurieModule* Module,
 		OUT std::wstring& Filename
-	)
-	{
+	) {
 		return AURIE_API_CALL(MdGetImageFilename, Module, Filename);
 	}
 
 	inline AurieStatus MdUnmapImage(
 		IN AurieModule* Module
-	)
-	{
+	) {
 		return AURIE_API_CALL(MdUnmapImage, Module);
 	}
 
-	namespace Internal
-	{
+	namespace Internal {
 		inline AurieStatus MdpQueryModuleInformation(
 			IN HMODULE Module,
 			OPTIONAL OUT PVOID* ModuleBase,
 			OPTIONAL OUT uint32_t* SizeOfModule,
 			OPTIONAL OUT PVOID* EntryPoint
-		)
-		{
+		) {
 			return AURIE_API_CALL(MdpQueryModuleInformation, Module, ModuleBase, SizeOfModule, EntryPoint);
 		}
 
 		inline fs::path& MdpGetImagePath(
 			IN AurieModule* Module
-		)
-		{
+		) {
 			return AURIE_API_CALL(MdpGetImagePath, Module);
 		}
 
 		inline AurieStatus MdpGetImageFolder(
 			IN AurieModule* Module,
 			OUT fs::path& Path
-		)
-		{
+		) {
 			return AURIE_API_CALL(MdpGetImageFolder, Module, Path);
 		}
 
 		inline AurieStatus MdpGetNextModule(
 			IN AurieModule* Module,
 			OUT AurieModule*& NextModule
-		)
-		{
+		) {
 			return AURIE_API_CALL(MdpGetNextModule, Module, NextModule);
 		}
 
 		inline PVOID MdpGetModuleBaseAddress(
 			IN AurieModule* Module
-		)
-		{
+		) {
 			return AURIE_API_CALL(MdpGetModuleBaseAddress, Module);
 		}
 
 		inline AurieStatus MdpLookupModuleByPath(
 			IN const fs::path& ModulePath,
 			OUT AurieModule*& Module
-		)
-		{
+		) {
 			return AURIE_API_CALL(MdpLookupModuleByPath, ModulePath, Module);
 		}
 	}
@@ -488,48 +463,41 @@ namespace Aurie
 		IN AurieModule* Module,
 		IN AurieInterfaceBase* Interface,
 		IN const char* InterfaceName
-	)
-	{
+	) {
 		return AURIE_API_CALL(ObCreateInterface, Module, Interface, InterfaceName);
 	}
 
 	inline bool ObInterfaceExists(
 		IN const char* InterfaceName
-	)
-	{
+	) {
 		return AURIE_API_CALL(ObInterfaceExists, InterfaceName);
 	}
 
 	inline AurieStatus ObDestroyInterface(
 		IN AurieModule* Module,
 		IN const char* InterfaceName
-	)
-	{
+	) {
 		return AURIE_API_CALL(ObDestroyInterface, Module, InterfaceName);
 	}
 
 	inline AurieStatus ObGetInterface(
 		IN const char* InterfaceName,
 		OUT AurieInterfaceBase*& Interface
-	)
-	{
+	) {
 		return AURIE_API_CALL(ObGetInterface, InterfaceName, Interface);
 	}
 
-	namespace Internal
-	{
+	namespace Internal {
 		inline void ObpSetModuleOperationCallback(
 			IN AurieModule* Module,
 			IN AurieModuleCallback CallbackRoutine
-		)
-		{
+		) {
 			return AURIE_API_CALL(ObpSetModuleOperationCallback, Module, CallbackRoutine);
 		}
 
 		inline AurieObjectType ObpGetObjectType(
 			IN AurieObject* Object
-		)
-		{
+		) {
 			return AURIE_API_CALL(ObpGetObjectType, Object);
 		}
 	}
@@ -537,64 +505,55 @@ namespace Aurie
 	inline AurieStatus PpQueryImageArchitecture(
 		IN const fs::path& Path,
 		OUT unsigned short& ImageArchitecture
-	)
-	{
+	) {
 		return AURIE_API_CALL(PpQueryImageArchitecture, Path, ImageArchitecture);
 	}
 
 	inline uintptr_t PpFindFileExportByName(
 		IN const fs::path& Path,
 		IN const char* ImageExportName
-	)
-	{
+	) {
 		return AURIE_API_CALL(PpFindFileExportByName, Path, ImageExportName);
 	}
 
 	inline void* PpGetFrameworkRoutine(
 		IN const char* ExportName
-	)
-	{
+	) {
 		return AURIE_API_CALL(PpGetFrameworkRoutine, ExportName);
 	}
 
 	inline AurieStatus PpGetCurrentArchitecture(
 		IN unsigned short& ImageArchitecture
-	)
-	{
+	) {
 		return AURIE_API_CALL(PpGetCurrentArchitecture, ImageArchitecture);
 	}
 
 	inline AurieStatus PpGetImageSubsystem(
 		IN PVOID Image,
 		OUT unsigned short& ImageSubsystem
-	)
-	{
+	) {
 		return AURIE_API_CALL(PpGetImageSubsystem, Image, ImageSubsystem);
 	}
 
-	namespace Internal
-	{
+	namespace Internal {
 		inline void* PpiFindModuleExportByName(
 			IN const AurieModule* Image,
 			IN const char* ImageExportName
-		)
-		{
+		) {
 			return AURIE_API_CALL(PpiFindModuleExportByName, Image, ImageExportName);
 		}
 
 		inline AurieStatus PpiQueryImageArchitecture(
 			IN void* Image,
 			OUT unsigned short& ImageArchitecture
-		)
-		{
+		) {
 			return AURIE_API_CALL(PpiQueryImageArchitecture, Image, ImageArchitecture);
 		}
 
 		inline AurieStatus PpiGetNtHeader(
 			IN void* Image,
 			OUT void*& NtHeader
-		)
-		{
+		) {
 			return AURIE_API_CALL(PpiGetNtHeader, Image, NtHeader);
 		}
 
@@ -603,16 +562,14 @@ namespace Aurie
 			IN const char* SectionName,
 			OUT uint64_t& SectionBase,
 			OUT size_t& SectionSize
-		)
-		{
+		) {
 			return AURIE_API_CALL(PpiGetModuleSectionBounds, Image, SectionName, SectionBase, SectionSize);
 		}
 
 		inline uint32_t PpiRvaToFileOffset(
 			IN PIMAGE_NT_HEADERS ImageHeaders,
 			IN uint32_t Rva
-		)
-		{
+		) {
 			return AURIE_API_CALL(PpiRvaToFileOffset, ImageHeaders, Rva);
 		}
 	}
